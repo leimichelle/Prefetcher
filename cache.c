@@ -801,6 +801,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
   case LRU:
   case FIFO:
     repl = cp->sets[set].way_tail;
+	/* ECE552 Assignment 4 - BEGIN CODE*/	
     if (cp->prefetch_type!=2 || prefetch==0) {
     	update_way_list(&cp->sets[set], repl, Head);
     }
@@ -808,6 +809,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
     	update_way_list(&cp->sets[set], repl, Tail);
 	}
     break;
+	/* ECE552 Assignment 4 - BEGIN CODE*/
   case Random:
     {
       int bindex = myrand() & (cp->assoc - 1);
