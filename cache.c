@@ -604,6 +604,8 @@ void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
   }
 }
 
+/* Stride Prefetcher */
+
 void stride_prefetcher(struct cache_t *cp, md_addr_t addr) {
   int pc = get_PC();
   int rpt_index = (pc >> 2) & (RPT_SIZE-1);
