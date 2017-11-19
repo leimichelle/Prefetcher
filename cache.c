@@ -522,14 +522,8 @@ void next_line_prefetcher(struct cache_t *cp, md_addr_t addr) {
 	}
 }
 
-/* Open Ended Prefetcher */
-void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
-	; 
-}
-
 md_addr_t get_PC();
-/* Stride Prefetcher */
-#define RPT_SIZE 8192
+#define RPT_SIZE 512
 typedef enum rpt_state {
   INIT=0,
   STEADY,
@@ -545,6 +539,70 @@ typedef struct rpt_entry_t {
 } rpt_entry_t;
 
 rpt_entry_t rpt[RPT_SIZE];
+/* Open Ended Prefetcher */
+void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
+  int pc = get_PC();
+  int rpt_index = (pc >> 2) & (RPT_SIZE-1);
+  
+  if (rpt[rpt_index].tag == pc) {
+    //already existing entry
+    int stride = addr - rpt[rpt_index].prev_addr;
+    rpt_state_t oldstate = rpt[rpt_index].state;
+    rpt_state_t newstate;
+    int newstride = rpt[rpt_index].stride;
+    if (stride == rpt[rpt_index].stride) {
+      if (oldstate != NO_PRED) {
+        newstate = STEADY;
+      } else {
+        newstate = TRANSIENT;
+      }
+    } else {
+      //stride condition false
+      if (oldstate == INIT) {
+        newstate = TRANSIENT;
+      } else if (oldstate == TRANSIENT) {
+        newstate = NO_PRED;
+      } else if (oldstate == STEADY) {
+        newstate = INIT;
+      } else {
+        newstate = NO_PRED;
+      }
+      //set new stride if we weren't in steady-state
+      if (oldstate != STEADY) {
+        newstride = stride;
+      }
+    }
+    rpt[rpt_index].state = newstate;
+    rpt[rpt_index].stride = newstride;
+    rpt[rpt_index].prev_addr = addr;
+    
+    if (newstate != NO_PRED) {
+      cache_access(       cp,	/* cache to access */
+                             Read ,	/* access type, Read or Write */
+       addr + newstride,	/* address of access */
+                NULL,	/* ptr to buffer for input/output */
+                 1,/* number of bytes to access */
+               0,	/* time of access */
+                  NULL,	/* for return of user data ptr */
+                        NULL,	/* for address of replaced block */
+              1);	/* 1 if the access is a prefetch, 0 if it is not */
+    }
+
+  } else {
+    //create new entry
+    if (rpt[rpt_index].state == NO_PRED) {
+      rpt[rpt_index].tag = pc;
+      rpt[rpt_index].prev_addr = addr;
+      rpt[rpt_index].stride = 0;
+      rpt[rpt_index].state = INIT;
+    }
+    else if (rpt[rpt_index].state == TRANSIENT) {
+      rpt[rpt_index].state = NO_PRED;
+    } else {
+      rpt[rpt_index].state = TRANSIENT;
+    }
+  }
+}
 
 void stride_prefetcher(struct cache_t *cp, md_addr_t addr) {
   int pc = get_PC();
@@ -741,7 +799,12 @@ cache_access(struct cache_t *cp,	/* cache to access */
   case LRU:
   case FIFO:
     repl = cp->sets[set].way_tail;
-    update_way_list(&cp->sets[set], repl, Head);
+    if (cp->prefetch_type!=2 || prefetch==0) {
+    	update_way_list(&cp->sets[set], repl, Head);
+    }
+	else {
+    	update_way_list(&cp->sets[set], repl, Tail);
+	}
     break;
   case Random:
     {
