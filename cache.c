@@ -504,10 +504,22 @@ cache_reg_stats(struct cache_t *cp,	/* cache instance */
 
 
 }
-
+/* ECE552 Assignment 4 - BEGIN CODE*/
 /* Next Line Prefetcher */
 void next_line_prefetcher(struct cache_t *cp, md_addr_t addr) {
-	; 
+	char* cache_name = cp->name;
+	if (strcmp(cache_name, "dl1") == 0) {
+		md_addr_t addr_first_byte = addr & ~(cp->bsize-1);
+		cache_access(       cp,	/* cache to access */
+	                         Read ,	/* access type, Read or Write */
+	   addr_first_byte + cp->bsize,	/* address of access */
+	     			  NULL,	/* ptr to buffer for input/output */
+	     		     cp->bsize,/* number of bytes to access */
+	     			 0,	/* time of access */
+	     		      NULL,	/* for return of user data ptr */
+	     	              NULL,	/* for address of replaced block */
+	     			1);	/* 1 if the access is a prefetch, 0 if it is not */
+	}
 }
 
 /* Open Ended Prefetcher */
@@ -520,6 +532,7 @@ void stride_prefetcher(struct cache_t *cp, md_addr_t addr) {
 	; 
 }
 
+/* ECE552 Assignment 4 - END CODE*/
 
 /* cache x might generate a prefetch after a regular cache access to address addr */
 void generate_prefetch(struct cache_t *cp, md_addr_t addr) {
