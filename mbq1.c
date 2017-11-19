@@ -12,6 +12,5 @@ int main(int argc, char* argv[]) {
     for (i=0; i<NSETS; i++) {
         a[i] = i;    
     }
-    printf("int %d\n",sizeof(int));
     return 0;
 }
