@@ -8,7 +8,7 @@ struct s {
     int c;
     int d;
 };
-// compiled 
+// compiled with -O2
 int main(int argc, char* argv[]) {
     /*In my configuration, I have a 2-set direct-mapped cache with an 8-byte cache line*/
     struct s a[NSETS];
