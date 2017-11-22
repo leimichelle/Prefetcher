@@ -522,7 +522,7 @@ void next_line_prefetcher(struct cache_t *cp, md_addr_t addr) {
 }
 
 md_addr_t get_PC();
-#define RPT_SIZE 512
+#define RPT_SIZE 16
 typedef enum rpt_state {
   INIT=0,
   STEADY,
@@ -540,8 +540,8 @@ typedef struct rpt_entry_t {
 rpt_entry_t rpt[RPT_SIZE];
 /* Open Ended Prefetcher */
 void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
-  int pc = get_PC();
-  int rpt_index = (pc >> 2) & (RPT_SIZE-1);
+  md_addr_t pc = get_PC();
+  md_addr_t rpt_index = (pc >> 3) & (RPT_SIZE-1);
   
   if (rpt[rpt_index].tag == pc) {
     //already existing entry
@@ -597,6 +597,8 @@ void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
     }
     else if (rpt[rpt_index].state == TRANSIENT) {
       rpt[rpt_index].state = NO_PRED;
+    } else if (rpt[rpt_index].state == STEADY) {
+      rpt[rpt_index].state = INIT;
     } else {
       rpt[rpt_index].state = TRANSIENT;
     }
@@ -604,18 +606,26 @@ void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
 }
 
 /* Stride Prefetcher */
+rpt_entry_t* stride_rpt;
+int init = 0;
 
 void stride_prefetcher(struct cache_t *cp, md_addr_t addr) {
-  int pc = get_PC();
-  int rpt_index = (pc >> 2) & (RPT_SIZE-1);
+  if (!init) {
+    stride_rpt = (rpt_entry_t*)calloc(cp->prefetch_type, sizeof(rpt_entry_t));
+    init = 1;
+  }
+  md_addr_t pc = get_PC();
+  int rpt_index = (pc>>3) & (cp->prefetch_type-1);
+  //printf("%d\n",stride_rpt[rpt_index].tag);
   
-  if (rpt[rpt_index].tag == pc) {
+  if (stride_rpt[rpt_index].tag == pc) {
     //already existing entry
-    int stride = addr - rpt[rpt_index].prev_addr;
-    rpt_state_t oldstate = rpt[rpt_index].state;
+    int stride = addr - stride_rpt[rpt_index].prev_addr;
+    rpt_state_t oldstate = stride_rpt[rpt_index].state;
     rpt_state_t newstate;
-    int newstride = rpt[rpt_index].stride;
-    if (stride == rpt[rpt_index].stride) {
+    int newstride = stride_rpt[rpt_index].stride;
+    
+    if (stride == stride_rpt[rpt_index].stride) {
       if (oldstate != NO_PRED) {
         newstate = STEADY;
       } else {
@@ -637,9 +647,10 @@ void stride_prefetcher(struct cache_t *cp, md_addr_t addr) {
         newstride = stride;
       }
     }
-    rpt[rpt_index].state = newstate;
-    rpt[rpt_index].stride = newstride;
-    rpt[rpt_index].prev_addr = addr;
+    
+    stride_rpt[rpt_index].state = newstate;
+    stride_rpt[rpt_index].stride = newstride;
+    stride_rpt[rpt_index].prev_addr = addr;
     
     if (newstate != NO_PRED && !cache_probe(cp, addr+newstride)) {
       cache_access(       cp,	/* cache to access */
@@ -655,10 +666,10 @@ void stride_prefetcher(struct cache_t *cp, md_addr_t addr) {
 
   } else {
     //create new entry
-    rpt[rpt_index].tag = pc;
-    rpt[rpt_index].prev_addr = addr;
-    rpt[rpt_index].stride = 0;
-    rpt[rpt_index].state = INIT;
+    stride_rpt[rpt_index].tag = pc;
+    stride_rpt[rpt_index].prev_addr = addr;
+    stride_rpt[rpt_index].stride = 0;
+    stride_rpt[rpt_index].state = INIT;
   }
 }
 
@@ -808,7 +819,7 @@ cache_access(struct cache_t *cp,	/* cache to access */
     	update_way_list(&cp->sets[set], repl, Tail);
 	}
     break;
-	/* ECE552 Assignment 4 - BEGIN CODE*/
+	/* ECE552 Assignment 4 - END CODE*/
   case Random:
     {
       int bindex = myrand() & (cp->assoc - 1);
