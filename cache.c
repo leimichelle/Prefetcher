@@ -531,10 +531,11 @@ typedef enum rpt_state {
 } rpt_state_t;
 
 typedef struct rpt_entry_t {
-  md_addr_t tag;
-  md_addr_t prev_addr;
-  int stride;
-  rpt_state_t state;
+  //sizeof(md_addr_t) returns 4 bytes
+  md_addr_t tag; //32-3-4=25bits
+  md_addr_t prev_addr; //32 bits
+  int stride; //32 bits
+  rpt_state_t state; //2 bits
 } rpt_entry_t;
 
 rpt_entry_t rpt[RPT_SIZE];
@@ -542,8 +543,9 @@ rpt_entry_t rpt[RPT_SIZE];
 void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
   md_addr_t pc = get_PC();
   md_addr_t rpt_index = (pc >> 3) & (RPT_SIZE-1);
+  md_addr_t tag = pc >> 4; //index bits
   
-  if (rpt[rpt_index].tag == pc) {
+  if (rpt[rpt_index].tag == tag) {
     //already existing entry
     int stride = addr - rpt[rpt_index].prev_addr;
     rpt_state_t oldstate = rpt[rpt_index].state;
@@ -590,7 +592,7 @@ void open_ended_prefetcher(struct cache_t *cp, md_addr_t addr) {
   } else {
     //create new entry
     if (rpt[rpt_index].state == NO_PRED) {
-      rpt[rpt_index].tag = pc;
+      rpt[rpt_index].tag = tag;
       rpt[rpt_index].prev_addr = addr;
       rpt[rpt_index].stride = 0;
       rpt[rpt_index].state = INIT;
