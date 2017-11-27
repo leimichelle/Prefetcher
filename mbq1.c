@@ -8,7 +8,7 @@ struct s {
 };
 // compiled with -O2 
 int main(int argc, char* argv[]) {
-    /*In my configuration, I have a 128-set direct-mapped cache with an 8-byte cache line*/
+    /*In my configuration, I have a 64-set direct-mapped cache with an 8-byte cache line*/
     struct s a[NSETS];
     int i;
     /*Each struct fits in one cache-line. Without a prefetcher, it will suffer 
